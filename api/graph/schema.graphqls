@@ -1,0 +1,35 @@
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+
+input OptionsInput {
+  names: [String!]!
+}
+
+input VoteInput {
+  id: ID!
+  option: String
+}
+
+type VoteResponse {
+  message: String!
+}
+
+type CreatePollResponse {
+  id: ID
+  error: String
+}
+
+type Option {
+  name: String!
+  votes: Int!
+}
+
+type Mutation {
+  createPoll(options: OptionsInput!): CreatePollResponse!
+  vote(vote: VoteInput!): VoteResponse!
+}
+
+type Subscription {
+  watchPoll(pollId: String!): [Option!]
+}
