@@ -7,6 +7,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/Gekuro/democrator/api/graph/model"
@@ -35,12 +36,14 @@ func (r *mutationResolver) CreatePoll(ctx context.Context, options model.Options
 	}
 	
 	result := r.DB.Create(&poll)
-	if result.Error != nil || result.RowsAffected != 1 { // TODO log this
+	if result.Error != nil || result.RowsAffected != 1 {
+		log.Printf("error saving to database: %s", result.Error)
 		return nil, fmt.Errorf("internal server error")
 	}
 
 	result = r.DB.Create(opts)
-	if result.Error != nil || result.RowsAffected < 2 { // TODO log this
+	if result.Error != nil || result.RowsAffected < 2 {
+		log.Printf("error saving to database: %s", result.Error)
 		return nil, fmt.Errorf("internal server error")
 	}
 
@@ -53,14 +56,15 @@ func (r *mutationResolver) Vote(ctx context.Context, vote model.VoteInput) (*mod
 	result := r.DB.Where("poll_id = ? AND name = ?", vote.ID, vote.Option).
 		Find(&option)
 	
-	if result.RowsAffected != 1 { // TODO log this
+	if result.RowsAffected != 1 {
 		return nil, fmt.Errorf("internal server error")
 	}
 
 	option.Votes++
 
 	result = r.DB.Save(&option)
-	if result.RowsAffected != 1 { // TODO log this
+	if result.RowsAffected != 1 {
+		log.Printf("error saving to database: %s", result.Error)
 		return nil, fmt.Errorf("internal server error")
 	}
 

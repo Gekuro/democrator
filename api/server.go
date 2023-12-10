@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
@@ -13,8 +15,6 @@ import (
 	"github.com/Gekuro/democrator/api/store"
 	"github.com/joho/godotenv"
 )
-
-const DEFAULT_PORT = "8000";
 
 func main() {
 	// dotenv
@@ -29,17 +29,23 @@ func main() {
 		panic(fmt.Errorf("error setting up store: %s", err))
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = DEFAULT_PORT
+	// logger
+	logFile, err := os.OpenFile("server.log", os.O_APPEND, 0777)
+	if err != nil {
+		panic(fmt.Errorf("error openning log file: %s", err))
 	}
+	mw := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(mw)
 
+	// gql
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: graph.NewResolver(db)}))
 	srv.AddTransport(&transport.Websocket{})
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	if strings.ToUpper(os.Getenv("APP_ENV")) == "DEV" {
+		http.Handle("/", playground.Handler("Democrator GraphiQL", "/query"))
+	}
 	http.Handle("/query", srv)
 
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Printf("connect to http://localhost:%s/ for GraphiQL", os.Getenv("PORT"))
+	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
 }

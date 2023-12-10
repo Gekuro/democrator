@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 
 	"github.com/Gekuro/democrator/api/store"
@@ -35,7 +36,8 @@ func GetUnusedPollId(db *gorm.DB) (id string, err error) {
 			Find(&exists).
 			Error
 		
-		if err != nil { // TODO log this
+		if err != nil {
+			log.Printf("error querying the database: %s", err)
 			return "", fmt.Errorf("error querying the database")
 		}
 

@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"log"
 	"time"
 
 	"github.com/Gekuro/democrator/api/graph/model"
@@ -43,7 +44,8 @@ func (s *PollStreamer) Start() {
 					Where("id = ?", pollId).
 					Error
 				
-				if err != nil { // TODO log this
+				if err != nil {
+					log.Printf("error reading streamer-enabled poll: %s", err)
 					continue 
 				}
 
