@@ -15,10 +15,10 @@ import (
 	"github.com/Gekuro/democrator/api/utils"
 )
 
-const DEFAULT_POLL_DURATION = time.Hour * 2
-
 // CreatePoll is the resolver for the createPoll field.
 func (r *mutationResolver) CreatePoll(ctx context.Context, options model.OptionsInput) (*model.CreatePollResponse, error) {
+	const DEFAULT_POLL_DURATION = time.Hour * 2
+
 	if len(options.Names) == 1 || len(options.Names) > 15 {
 		return nil, fmt.Errorf("error: there should be between 2 and 15 options")
 	}
@@ -34,7 +34,7 @@ func (r *mutationResolver) CreatePoll(ctx context.Context, options model.Options
 	for _, n := range options.Names {
 		opts = append(opts, &store.Option{PollId: id, Name: n, Votes: 0})
 	}
-	
+
 	result := r.DB.Create(&poll)
 	if result.Error != nil || result.RowsAffected != 1 {
 		log.Printf("error saving to database: %s", result.Error)
@@ -55,7 +55,7 @@ func (r *mutationResolver) Vote(ctx context.Context, vote model.VoteInput) (*mod
 	var option store.Option
 	result := r.DB.Where("poll_id = ? AND name = ?", vote.ID, vote.Option).
 		Find(&option)
-	
+
 	if result.RowsAffected != 1 {
 		return nil, fmt.Errorf("internal server error")
 	}
