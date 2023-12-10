@@ -20,7 +20,7 @@ func (r *mutationResolver) CreatePoll(ctx context.Context, options model.Options
 	const DEFAULT_POLL_DURATION = time.Hour * 2
 
 	if len(options.Names) == 1 || len(options.Names) > 15 {
-		return nil, fmt.Errorf("error: there should be between 2 and 15 options")
+		return nil, fmt.Errorf("there should be between 2 and 15 options")
 	}
 
 	id, err := utils.GetUnusedPollId(r.DB)
@@ -52,13 +52,18 @@ func (r *mutationResolver) CreatePoll(ctx context.Context, options model.Options
 
 // Vote is the resolver for the vote field.
 func (r *mutationResolver) Vote(ctx context.Context, vote model.VoteInput) (*model.VoteResponse, error) {
-	// TODO check if poll.expiresAt field is in the past
+	expired, err := store.IsPollExpired(r.DB, vote.ID)
+	if err != nil {
+		return &model.VoteResponse{Message: "no such poll"}, nil
+	} else if expired {
+		return &model.VoteResponse{Message: "poll is closed"}, nil
+	}
+
 	var option store.Option
-	result := r.DB.Where("poll_id = ? AND name = ?", vote.ID, vote.Option).
-		Find(&option)
+	result := r.DB.Find(&option, "poll_id = ? AND name = ?", vote.ID, vote.Option)
 
 	if result.RowsAffected != 1 {
-		return nil, fmt.Errorf("internal server error")
+		return &model.VoteResponse{Message: "no such option"}, nil
 	}
 
 	option.Votes++
@@ -72,25 +77,55 @@ func (r *mutationResolver) Vote(ctx context.Context, vote model.VoteInput) (*mod
 	return &model.VoteResponse{Message: "success"}, nil
 }
 
-// WatchPoll is the resolver for the watchPoll field.
-func (r *subscriptionResolver) WatchPoll(ctx context.Context, pollID string) (<-chan []*model.Option, error) {
+// GetPoll is the resolver for the getPoll field.
+func (r *queryResolver) GetPoll(ctx context.Context, id string) (*model.Poll, error) {
 	var poll store.Poll
 
-	result := r.DB.First(&poll).
-		Where("id = ?", pollID)
+	result := r.DB.First(&poll, "id = ?", id)
 
 	if result.RowsAffected != 1 {
 		return nil, fmt.Errorf("no such poll")
 	}
 
-	return r.Streamer.Subscribe(pollID), nil
+	var opts []store.Option
+	var modelOpts []*model.Option
+
+	result = r.DB.Find(&opts, "poll_id = ?", id)
+
+	if result.RowsAffected < 2 || result.RowsAffected > 15 {
+		log.Printf("corrupted database: poll.id=%s has an invalid amount of options (%v)", id, result.RowsAffected)
+		return nil, fmt.Errorf("could not load poll options")
+	}
+
+	for _, option := range opts {
+		modelOpts = append(modelOpts, &model.Option{Name: option.Name, Votes: option.Votes})
+	}
+
+	return &model.Poll{ID: poll.Id, Options: modelOpts, ExpiresAt: int(poll.ExpiresAt.Unix())}, nil
+}
+
+// WatchPoll is the resolver for the watchPoll field.
+func (r *subscriptionResolver) WatchPoll(ctx context.Context, id string) (<-chan []*model.Option, error) {
+	var poll store.Poll
+
+	result := r.DB.First(&poll, "id = ?", id)
+
+	if result.RowsAffected != 1 {
+		return nil, fmt.Errorf("no such poll")
+	}
+
+	return r.PubSub.Subscribe(id), nil
 }
 
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
+// Query returns QueryResolver implementation.
+func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
+
 // Subscription returns SubscriptionResolver implementation.
 func (r *Resolver) Subscription() SubscriptionResolver { return &subscriptionResolver{r} }
 
 type mutationResolver struct{ *Resolver }
+type queryResolver struct{ *Resolver }
 type subscriptionResolver struct{ *Resolver }

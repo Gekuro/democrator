@@ -1,1 +1,8 @@
 .idea
+
+# executables
+*.exe
+*/server
+
+# logs
+/api/logs/*

@@ -1,3 +1,14 @@
+type Poll {
+  id: ID!
+  options: [Option!]!
+  expiresAt: Int!
+}
+
+type Option {
+  name: String!
+  votes: Int!
+}
+
 input OptionsInput {
   names: [String!]!
 }
@@ -16,9 +27,8 @@ type CreatePollResponse {
   error: String
 }
 
-type Option {
-  name: String!
-  votes: Int!
+type Query {
+  getPoll(id: ID!): Poll
 }
 
 type Mutation {
@@ -27,5 +37,5 @@ type Mutation {
 }
 
 type Subscription {
-  watchPoll(pollId: String!): [Option!]
+  watchPoll(id: ID!): [Option!]
 }

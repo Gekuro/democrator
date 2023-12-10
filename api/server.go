@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/Gekuro/democrator/api/graph"
+	"github.com/Gekuro/democrator/api/logger"
 	"github.com/Gekuro/democrator/api/store"
 	"github.com/joho/godotenv"
 )
@@ -20,22 +20,21 @@ func main() {
 	// dotenv
 	err := godotenv.Load(".env")
 	if err != nil {
-		panic(fmt.Errorf("error reading .env file: %s", err))
+		log.Fatalf("error reading .env file: %s", err)
 	}
 
 	// store
 	db, err := store.NewStore()
 	if err != nil {
-		panic(fmt.Errorf("error setting up store: %s", err))
+		log.Fatalf("error setting up store: %s", err)
 	}
 
 	// logger
-	logFile, err := os.OpenFile("server.log", os.O_APPEND, 0777)
+	logWriter, err := logger.NewLoggerWriter()
 	if err != nil {
-		panic(fmt.Errorf("error openning log file: %s", err))
+		log.Fatalf("error setting up store: %s", err)
 	}
-	mw := io.MultiWriter(os.Stdout, logFile)
-	log.SetOutput(mw)
+	log.SetOutput(logWriter)
 
 	// gql
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: graph.NewResolver(db)}))
@@ -46,6 +45,6 @@ func main() {
 	}
 	http.Handle("/query", srv)
 
-	log.Printf("connect to http://localhost:%s/ for GraphiQL", os.Getenv("PORT"))
+	fmt.Printf("connect to http://localhost:%s/ for GraphiQL", os.Getenv("PORT")) // intentionally omitted from logs
 	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
 }

@@ -16,6 +16,12 @@ type OptionsInput struct {
 	Names []string `json:"names"`
 }
 
+type Poll struct {
+	ID        string    `json:"id"`
+	Options   []*Option `json:"options"`
+	ExpiresAt int       `json:"expiresAt"`
+}
+
 type VoteInput struct {
 	ID     string  `json:"id"`
 	Option *string `json:"option,omitempty"`
