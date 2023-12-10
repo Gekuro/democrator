@@ -52,6 +52,7 @@ func (r *mutationResolver) CreatePoll(ctx context.Context, options model.Options
 
 // Vote is the resolver for the vote field.
 func (r *mutationResolver) Vote(ctx context.Context, vote model.VoteInput) (*model.VoteResponse, error) {
+	// TODO check if poll.expiresAt field is in the past
 	var option store.Option
 	result := r.DB.Where("poll_id = ? AND name = ?", vote.ID, vote.Option).
 		Find(&option)
